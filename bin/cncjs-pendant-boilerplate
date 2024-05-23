@@ -112,7 +112,7 @@ var createServer = function(options) {
             })
             .action(function(command, callback) {
                 // Concatenate multiple lines of G-code with newline character
-                var multiLineGCode = 'G91\nG0 X10\nG90\n';
+                var multiLineGCode = 'G00 x0y0\nG00 X40y40\nG00 X40Y40z80\nG00 X40Y40Z0\nG00 x0y40\nG00 x0y0\n';
                 
                 // Emit 'write' event to socket with multi-line G-code
                 socket.emit('write', options.port, multiLineGCode);
