@@ -101,6 +101,24 @@ var createServer = function(options) {
                 socket.emit('write', options.port, line);
                 callback();
             });
+        
+        vorpal
+            .mode('tri')
+            .description('Makes a triangle.')
+            .delimiter(options.controllerType + '>')
+            .init(function(args, callback) {
+                this.log('You can now directly enter commands. To exit, type `exit`.');
+                callback();
+            })
+            .action(function(command, callback) {
+                // Concatenate multiple lines of G-code with newline character
+                var multiLineGCode = 'G91\nG0 X10\nG90\n';
+                
+                // Emit 'write' event to socket with multi-line G-code
+                socket.emit('write', options.port, multiLineGCode);
+                
+                callback();
+            });
 
         vorpal
             .command('status')
