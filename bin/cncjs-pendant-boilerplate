@@ -68,10 +68,10 @@ var moveToPoints = async (points) => {
         if (stop) break;
 
         const point = points[i];
-        const gcodeCommand = `G00 X${point.x} Y${point.y} Z${point.z}`;
+        const gcodeCommand = `G00 X${point.x} Y${point.y} Z${point.z}\n`;
 
         socket.emit('write', options.port, gcodeCommand);
-        console.log('Sending G-code command:', gcodeCommand);
+        console.log('Sending G-code command:' + gcodeCommand);
 
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -125,7 +125,7 @@ var createServer = function(options) {
             .description('Moves to points defined by another device.')
             .delimiter(options.controllerType + '>')
             .action(function(args, callback) {
-                var points = [
+                var points1 = [
                     { x: 0, y: 0, z: 0 },
                     { x: 30, y: 30, z: 0 },
                     { x: 30, y: 30, z: 80 },
@@ -134,7 +134,7 @@ var createServer = function(options) {
                     { x: 0, y: 0, z: 0 },
                 ];
 
-                var gcodeCommands = points.map(point => `G00 X${point.x} Y${point.y} Z${point.z}`).join('\n');
+                var gcodeCommands = points1.map(point => `G00 X${point.x} Y${point.y} Z${point.z}`).join('\n');
                 socket.emit('write', options.port, gcodeCommands);
                 console.log('Sending G-code commands:', gcodeCommands);
                 callback();
@@ -144,7 +144,7 @@ var createServer = function(options) {
             .command('loopPoints')
             .description('Moves to points defined by another device.')
             .action(function(args, callback) {
-                var points = [
+                var points2 = [
                     { x: 0, y: 0, z: 0 },
                     { x: 30, y: 30, z: 0 },
                     { x: 30, y: 30, z: 80 },
@@ -153,7 +153,7 @@ var createServer = function(options) {
                     { x: 0, y: 0, z: 0 },
                 ];
                 stop = false;
-                moveToPoints(points).then(callback);
+                moveToPoints(points2).then(callback);
             });
 
         vorpal
