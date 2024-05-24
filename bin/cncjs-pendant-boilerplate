@@ -117,6 +117,36 @@ var createServer = function(options) {
             });
 
         vorpal
+            .command('multiPoint')
+            .description('Moves to points defined by another device.')
+            .delimiter(options.controllerType + '>')
+            .action(function(args, callback) {
+                // Simulate receiving points from another device
+                var points = [
+                    { x: 0, y: 0, z: 0 },
+                    { x: 30, y: 30, z: 0 },
+                    { x: 30, y: 30, z: 80 },
+                    { x: 30, y: 30, z: 0 },
+                    { x: 0, y: 30, z: 0 },
+                    { x: 30, y: 30, z: 0 },
+                ];
+                
+                // Generate G-code for each point
+                var gcodeCommands = points.map(point => {
+                    return `G00 X${point.x} Y${point.y} Z${point.z}`;
+                }).join('\n');
+                
+                // Emit 'write' event to socket with multi-line G-code
+                socket.emit('write', options.port, gcodeCommands);
+                
+                // Optionally, log the G-code commands to the console
+                console.log('Sending G-code commands:');
+                console.log(gcodeCommands);
+                
+                callback();
+            });
+
+        vorpal
             .command('status')
             .description('Displays sender status')
             .action(function(args, callback) {
