@@ -58,24 +58,23 @@ var store = {
     }
 };
 
-// Keypress handling variables
-let stop = false;
-let isProcessing = false;
 
-// Setup keypress listener
-keypress(process.stdin);
-process.stdin.setRawMode(true);
-process.stdin.resume();
-
-process.stdin.on('keypress', (ch, key) => {
-    if (!isProcessing && key && key.name === 'space') {
-        stop = true;
-        console.log('Space button pressed. Stopping...');
-    }
-});
 
 var moveToPoints = async (points) => {
-    isProcessing = true;
+    // Keypress handling variables
+    let stop = false;
+
+    // Setup keypress listener
+    keypress(process.stdin);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+
+    process.stdin.on('keypress', (ch, key) => {
+        if (key && key.name === 'space') {
+            stop = true;
+            console.log('Space button pressed. Stopping...');
+        }
+    });
     for (let i = 0; i < points.length; i++) {
         if (stop) break;
 
@@ -87,9 +86,7 @@ var moveToPoints = async (points) => {
 
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
-
     console.log('Finished processing points or stopped.');
-    isProcessing = false;
 };
 
 var createServer = function(options) {
@@ -164,7 +161,6 @@ var createServer = function(options) {
                     { x: 0, y: 30, z: 0 },
                     { x: 0, y: 0, z: 0 },
                 ];
-                stop = false;
                 moveToPoints(points2).then(callback);
             });
 
