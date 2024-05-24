@@ -75,8 +75,8 @@ var moveToPoints = async (points) => {
             console.log('Space button pressed. Stopping...');
         }
     });
-    for (let i = 0; i < points.length; i++) {
-        if (stop) break;
+    let i = 0;
+    while (!stop) {
 
         const point = points[i];
         const gcodeCommand = `G00 X${point.x} Y${point.y} Z${point.z}\n`;
@@ -85,8 +85,10 @@ var moveToPoints = async (points) => {
         console.log('Sending G-code command:' + gcodeCommand);
 
         await new Promise(resolve => setTimeout(resolve, 1000));
+        i++;
+        if(i >= points.length) i = 0;
     }
-    console.log('Finished processing points or stopped.');
+    console.log('Stopped.');
 };
 
 var createServer = function(options) {
@@ -131,7 +133,7 @@ var createServer = function(options) {
 
         vorpal
             .command('multiPoint')
-            .description('Moves to points defined by another device.')
+            .description('Moves to set points in sequential order')
             .delimiter(options.controllerType + '>')
             .action(function(args, callback) {
                 var points1 = [
@@ -151,7 +153,7 @@ var createServer = function(options) {
 
         vorpal
             .command('loopPoints')
-            .description('Moves to points defined by another device.')
+            .description('Move to points in sequential order until the spacebar is pressed')
             .action(function(args, callback) {
                 var points2 = [
                     { x: 0, y: 0, z: 0 },
