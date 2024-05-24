@@ -9,6 +9,7 @@ var vorpal = require('vorpal')();
 var pkg = require('../package.json');
 var serverMain = require('../index');
 var commands = require('../commands');
+var keypress = require('.../keypress');
 var options = {};
 
 program
@@ -55,6 +56,41 @@ var store = {
     sender: {
         status: {}
     }
+};
+// Setup keypress listener
+keypress(process.stdin);
+process.stdin.setRawMode(true);
+process.stdin.resume();
+
+let stop = false;
+
+process.stdin.on('keypress', (ch, key) => {
+    if (key && key.name === 'space') {
+        stop = true;
+        console.log('Space button pressed. Stopping...');
+    }
+});
+
+
+
+var moveToPoints = async (points) => {
+    for (let i = 0; i < points.length; i++) {
+        if (stop) break;
+        
+        const point = points[i];
+        const gcodeCommand = `G00 X${point.x} Y${point.y} Z${point.z}`;
+        
+        // Emit 'write' event to socket with single-line G-code
+        socket.emit('write', options.port, gcodeCommand);
+        
+        // Log the G-code command
+        console.log('Sending G-code command:', gcodeCommand);
+        
+        // Simulate delay for movement (adjust as needed)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    console.log('Finished processing points or stopped.');
 };
 
 var createServer = function(options) {
@@ -144,6 +180,22 @@ var createServer = function(options) {
                 console.log(gcodeCommands);
                 
                 callback();
+            });
+        
+        vorpal
+            .command('loopPoints')
+            .description('Moves to points defined by another device.')
+            .action(function(args, callback) {
+                var points = [
+                    { x: 0, y: 0, z: 0 },
+                    { x: 30, y: 30, z: 0 },
+                    { x: 30, y: 30, z: 80 },
+                    { x: 30, y: 30, z: 0 },
+                    { x: 0, y: 30, z: 0 },
+                    { x: 0, y: 0, z: 0 },
+                ];
+                stop = false;  // Reset stop flag
+                moveToPoints(points).then(callback);
             });
 
         vorpal
