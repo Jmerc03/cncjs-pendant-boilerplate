@@ -128,7 +128,7 @@ var createServer = function(options) {
                     { x: 30, y: 30, z: 80 },
                     { x: 30, y: 30, z: 0 },
                     { x: 0, y: 30, z: 0 },
-                    { x: 30, y: 30, z: 0 },
+                    { x: 0, y: 0, z: 0 },
                 ];
                 
                 // Generate G-code for each point
