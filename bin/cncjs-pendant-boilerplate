@@ -9,7 +9,7 @@ var vorpal = require('vorpal')();
 var pkg = require('../package.json');
 var serverMain = require('../index');
 var commands = require('../commands');
-var keypress = require('.../keypress');
+var keypress = require('keypress');
 var options = {};
 
 program
