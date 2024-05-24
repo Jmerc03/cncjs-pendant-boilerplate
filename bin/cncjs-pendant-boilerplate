@@ -13,16 +13,16 @@ var keypress = require('keypress');
 var options = {};
 
 program
-	.version(pkg.version)
-	.usage('-s <secret> -p <port> [options]')
-	.option('-l, --list', 'list available ports then exit')
+    .version(pkg.version)
+    .usage('-s <secret> -p <port> [options]')
+    .option('-l, --list', 'list available ports then exit')
     .option('-s, --secret', 'the secret key stored in the ~/.cncrc file')
-	.option('-p, --port <port>', 'path or name of serial port')
-	.option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 115200)
-	.option('--socket-address <address>', 'socket address or hostname (default: localhost)', 'localhost')
-	.option('--socket-port <port>', 'socket port (default: 8000)', 8000)
-	.option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', 'Grbl')
-    .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string (default: 30d)', '30d')
+    .option('-p, --port <port>', 'path or name of serial port')
+    .option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 115200)
+    .option('--socket-address <address>', 'socket address or hostname (default: localhost)', 'localhost')
+    .option('--socket-port <port>', 'socket port (default: 8000)', 8000)
+    .option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', 'Grbl')
+    .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string (default: 30d)', '30d');
 
 program.parse(process.argv);
 
@@ -37,15 +37,15 @@ var options = {
 };
 
 if (options.list) {
-	serialport.list().then(function(ports) {
-		ports.forEach(function(port) {
-			console.log(port.path);
-		});
-	}).catch((err) => {
-        console.error(err)
-        process.exit(1)
-    })
-	return;
+    serialport.list().then(function(ports) {
+        ports.forEach(function(port) {
+            console.log(port.path);
+        });
+    }).catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });
+    return;
 }
 
 var store = {
@@ -57,72 +57,44 @@ var store = {
         status: {}
     }
 };
-// Setup keypress listener
-keypress(process.stdin);
-process.stdin.setRawMode(true);
-process.stdin.resume();
 
+// Keypress handling variables
 let stop = false;
-
-process.stdin.on('keypress', (ch, key) => {
-    if (key && key.name === 'space') {
-        stop = true;
-        console.log('Space button pressed. Stopping...');
-    }
-});
-
-
+let isProcessing = false;
 
 var moveToPoints = async (points) => {
+    isProcessing = true;
     for (let i = 0; i < points.length; i++) {
         if (stop) break;
-        
+
         const point = points[i];
         const gcodeCommand = `G00 X${point.x} Y${point.y} Z${point.z}`;
-        
-        // Emit 'write' event to socket with single-line G-code
+
         socket.emit('write', options.port, gcodeCommand);
-        
-        // Log the G-code command
         console.log('Sending G-code command:', gcodeCommand);
-        
-        // Simulate delay for movement (adjust as needed)
+
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
+
     console.log('Finished processing points or stopped.');
+    isProcessing = false;
 };
 
 var createServer = function(options) {
     serverMain(options, function(err, socket) {
-        // Grbl
-        socket.on('Grbl:state', function(state) {
-            store.controller.state = state;
-        });
-        socket.on('Grbl:settings', function(settings) {
-            store.controller.settings = settings;
-        });
+        if (err) {
+            console.error(err);
+            process.exit(1);
+        }
 
-        // Smoothie
-        socket.on('Smoothie:state', function(state) {
-            store.controller.state = state;
-        });
-        socket.on('Smoothie:settings', function(settings) {
-            store.controller.settings = settings;
-        });
+        // Setup socket listeners
+        const setupSocketListeners = (type) => {
+            socket.on(`${type}:state`, (state) => store.controller.state = state);
+            socket.on(`${type}:settings`, (settings) => store.controller.settings = settings);
+        };
+        ['Grbl', 'Smoothie', 'TinyG'].forEach(setupSocketListeners);
 
-        // TinyG
-        socket.on('TinyG:state', function(state) {
-            store.controller.state = state;
-        });
-        socket.on('TinyG:settings', function(settings) {
-            store.controller.settings = settings;
-        });
-
-        // Sender
-        socket.on('sender:status', function(data) {
-            store.sender.status = data;
-        });
+        socket.on('sender:status', (data) => store.sender.status = data);
 
         vorpal
             .mode('command')
@@ -137,18 +109,14 @@ var createServer = function(options) {
                 socket.emit('write', options.port, line);
                 callback();
             });
-        
+
         vorpal
             .command('tri')
             .description('Makes a triangle.')
             .delimiter(options.controllerType + '>')
             .action(function(command, callback) {
-                // Concatenate multiple lines of G-code with newline character
                 var multiLineGCode = 'G00 x0y0\nG00 X40y40\nG00 X40Y40z80\nG00 X40Y40Z0\nG00 x0y40\nG00 x0y0\n';
-                
-                // Emit 'write' event to socket with multi-line G-code
                 socket.emit('write', options.port, multiLineGCode);
-                
                 callback();
             });
 
@@ -157,7 +125,6 @@ var createServer = function(options) {
             .description('Moves to points defined by another device.')
             .delimiter(options.controllerType + '>')
             .action(function(args, callback) {
-                // Simulate receiving points from another device
                 var points = [
                     { x: 0, y: 0, z: 0 },
                     { x: 30, y: 30, z: 0 },
@@ -166,22 +133,13 @@ var createServer = function(options) {
                     { x: 0, y: 30, z: 0 },
                     { x: 0, y: 0, z: 0 },
                 ];
-                
-                // Generate G-code for each point
-                var gcodeCommands = points.map(point => {
-                    return `G00 X${point.x} Y${point.y} Z${point.z}`;
-                }).join('\n');
-                
-                // Emit 'write' event to socket with multi-line G-code
+
+                var gcodeCommands = points.map(point => `G00 X${point.x} Y${point.y} Z${point.z}`).join('\n');
                 socket.emit('write', options.port, gcodeCommands);
-                
-                // Optionally, log the G-code commands to the console
-                console.log('Sending G-code commands:');
-                console.log(gcodeCommands);
-                
+                console.log('Sending G-code commands:', gcodeCommands);
                 callback();
             });
-        
+
         vorpal
             .command('loopPoints')
             .description('Moves to points defined by another device.')
@@ -194,7 +152,7 @@ var createServer = function(options) {
                     { x: 0, y: 30, z: 0 },
                     { x: 0, y: 0, z: 0 },
                 ];
-                stop = false;  // Reset stop flag
+                stop = false;
                 moveToPoints(points).then(callback);
             });
 
@@ -230,7 +188,7 @@ var createServer = function(options) {
                             return;
                         }
 
-                        var eventArgs = Array.prototype.slice.call(arguments, 2); // err, eventName
+                        var eventArgs = Array.prototype.slice.call(arguments, 2);
                         socket.emit.apply(socket, [eventName, options.port].concat(eventArgs));
                         console.log('ok');
                         callback();
@@ -253,9 +211,7 @@ if (options.port) {
 }
 
 serialport.list().then(function (ports) {
-    const choices = ports.map(function(port) {
-        return port.path;
-    });
+    const choices = ports.map(port => port.path);
 
     inquirer.prompt([{
         type: 'list',
@@ -264,10 +220,9 @@ serialport.list().then(function (ports) {
         choices: choices
     }]).then(function(answers) {
         options.port = answers.port;
-
         createServer(options);
     });
 }).catch((err) => {
-    console.error(err)
-    process.exit(1)
-})
+    console.error(err);
+    process.exit(1);
+});
