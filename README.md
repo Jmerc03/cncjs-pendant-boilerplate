@@ -14,3 +14,13 @@ Run `bin/cncjs-pendant-boilerplate` to start the interactive client. Pass --help
 ```
 bin/cncjs-pendant-boilerplate --help
 ```
+
+## Changes to boilerplate
+
+Added custom commands to move the cnc head:
+
+* tri: Makes the CNC head move in one triangle
+
+* multiPoint: moves the CNC head through points in a list
+
+* loopPoins: a command that loops through different coordinates until the space button is pressed.
