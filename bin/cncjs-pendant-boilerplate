@@ -2,6 +2,8 @@
 
 var fs = require('fs');
 var path = require('path');
+// const fs = require('fs');
+//         const path = require('path');
 var program = require('commander');
 var serialport = require('serialport');
 var inquirer = require('inquirer');
@@ -58,7 +60,10 @@ var store = {
     }
 };
 
-
+const ifFile = async (filePath) => {
+    await fs.existsSync(filePath)
+    return fs.existsSync(filePath)
+}
 
 var moveToPoints = async (points) => {
     // Keypress handling variables
@@ -137,31 +142,227 @@ var createServer = function(options) {
             .delimiter(options.controllerType + '>')
             .action(function(args, callback) {
                 var points1 = [
-                    { x: 0, y: 0, z: 0 },
-                    { x: 30, y: 30, z: 0 },
-                    { x: 30, y: 30, z: 80 },
-                    { x: 30, y: 30, z: 0 },
-                    { x: 0, y: 30, z: 0 },
-                    { x: 0, y: 0, z: 0 },
+                    { x: 2.500, y: 2.500, z: -2.500 },
+                    { x: 30, y: 30, z: -2.500 },
+                    { x: 30, y: 30, z: -40 },
+                    { x: 30, y: 30, z: -2.500 },
+                    { x: 2.500, y: 30, z: -2.500 },
+                    { x: 2.500, y: 2.500, z: -2.500 },
                 ];
 
                 var gcodeCommands = points1.map(point => `G00 X${point.x} Y${point.y} Z${point.z}`).join('\n');
+                socket.emit('write', options.port, points1);
+                console.log(points1);
                 socket.emit('write', options.port, gcodeCommands);
                 console.log('Sending G-code commands:', gcodeCommands);
                 callback();
             });
+       
+
+        // vorpal //has indexing issue, to enter new coordinates do not delete the last coordinate line or it will not run one of you coordinates
+        //     .command('moveToFile')
+        //     .description('Moves to set points in input file in sequential order')
+        //     .delimiter(options.controllerType + '>')
+        //     .action(function(args, callback) {
+        //         const filePath = path.join(__dirname, 'coordinates.txt');
+        //             if(fs.existsSync(filePath)){
+        //                 console.log(filePath, "exists")
+        //                 fs.readFile(filePath, 'utf8', (err, data) => {
+        //                     console.log('does it work')
+        //                     if (err) {
+        //                         console.error('Error reading the coordinates file:', err);
+        //                         callback();
+        //                         return;
+        //                     }
+        
+        //                     const points = data.trim().split('\n').map((line, index) => {
+        //                         const parts = line.split(',');
+        //                         if (parts.length !== 3) {
+        //                             console.error(`Error parsing line ${index + 1}: "${line}". Expected format: x,y,z`);
+        //                             return null;
+        //                         }
+        //                         let [x, y, z] = parts.map(part => part.trim());
+        //                         x = Number(x);
+        //                         y = Number(y);
+        //                         z = Number(z);
+        
+        //                         if (isNaN(x) || isNaN(y) || isNaN(z)) {
+        //                             console.error(`Invalid number on line ${index + 1}: "${line}"`);
+        //                             return null;
+        //                         }
+        
+        //                         // Bounds checking
+        //                         if (x > 119  || y > 200 || z < -43) {
+        //                             console.log(`Coordinates out of bounds on line ${index + 1}: setting to (119, 200, -43)`);
+        //                             x = 119;
+        //                             y = 200;
+        //                             z = -43;
+        //                         }
+        //                         if (x<2.5||y<2.5||z>-2.5){
+        //                             console.log('Coordinates out of bounds on line ${index+1}: setting to (119, 200, -43)');
+        //                             x=2.5;
+        //                             y=2.5;
+        //                             z=-2.5;
+        //                         }
+        
+        //                         return { x, y, z };
+        //                     }).filter(point => point !== null);
+        
+        //                     if (points.length === 0) {
+        //                         console.error('No valid coordinates found.');
+        //                         callback();
+        //                         return;
+        //                     }
+                            
+        //                     points.push({ x: 2.5, y: 2.5, z: -2.5 }); //return home between coordinates
+        //                     console.log('Going home');
+
+        //                     const gcodeCommands = points.map(point => `G00 X${point.x} Y${point.y} Z${point.z}`).join('\n');
+                            
+        //                     // Emit the G-code commands
+        //                     socket.emit('write', options.port, gcodeCommands);
+        //                     console.log('Sending G-code commands:', gcodeCommands);
+        //                     // Callback to indicate completion
+        //                     callback();
+        //                 });
+        //             }
+        //             else{
+        //                 console.log(filePath, 'does not exist')
+        //             }
+  
+
+                
+        //     });
+
+
+        vorpal
+            .command('moveToFile')
+            .description('Moves to set points in input file in sequential order')
+            .delimiter(options.controllerType + '>')
+            .action(function(args, callback) {
+                const filePath = path.join(__dirname, 'coordinates.txt');
+                let stop = false;
+
+                // Setup keypress listener
+                keypress(process.stdin);
+                process.stdin.setRawMode(true);
+                process.stdin.resume();
+            
+                process.stdin.on('keypress', (ch, key) => {
+                    if (key && key.name === 'space') {
+                        stop = true;
+                        console.log('Space button pressed. Stopping...');
+                    }
+                });
+                isCont = true;
+
+                     ifFile(filePath).then( () => {
+                        if (fs.existsSync(filePath)) {
+                            console.log(filePath, "exists");
+                            fs.readFile(filePath, 'utf8', (err, data) => {
+                                if (err) {
+                                    console.error('Error reading the coordinates file:', err);
+                                    callback();
+                                    return;
+                                }
+                                
+                                const points = data.trim().split('\n').map((line, index) => {
+                                    const parts = line.split(',');
+                                    if (parts.length !== 3) {
+                                        console.error(`Error parsing line ${index + 1}: "${line}". Expected format: x,y,z`);
+                                        return null;
+                                    }
+                                    let [x, y, z] = parts.map(part => part.trim());
+                                    x = Number(x);
+                                    y = Number(y);
+                                    z = Number(z);
+                                    
+                                    if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                                        console.error(`Invalid number on line ${index + 1}: "${line}"`);
+                                        return null;
+                                    }
+                                    
+                                    if (x > 119  || y > 200 || z < -43) {
+                                        console.log(`Coordinates out of bounds on line ${index + 1}: setting to (119, 200, -43)`);
+                                        x = 119;
+                                        y = 200;
+                                        z = -43;
+                                    } else if (x < 2.5 || y < 2.5 || z > -2.5) {
+                                        console.log(`Coordinates out of bounds on line ${index + 1}: setting to (2.5, 2.5, -2.5)`);
+                                        x = 2.5;
+                                        y = 2.5;
+                                        z = -2.5;
+                                    }
+                                    
+                                    return { x, y, z };
+                                }).filter(point => point !== null);
+                                
+                                if (points.length === 0) {
+                                    console.error('No valid coordinates found.');
+                                    callback();
+                                    return;
+                                }
+                                
+                                let odd = 0;
+                                let gcodeCommands = '';
+                                points.forEach(point => {
+                                    gcodeCommands += `G00 X${point.x} Y${point.y} Z${point.z}\n`;
+                                    gcodeCommands += `G00 X${point.x} Y${point.y} Z${point.z - 10}\n`;
+                                    gcodeCommands += `G00 X${point.x} Y${point.y} Z${point.z}\n`;
+                                    odd++;
+                                    if (odd % 2 === 0) {
+                                        gcodeCommands += `G00 X2.5 Y2.5 Z-2.5\n`; 
+                                        gcodeCommands += `G00 X2.5 Y2.5 Z-12.5\n`;
+                                        gcodeCommands += `G00 X2.5 Y2.5 Z-2.5\n`;
+                                    }
+                                });
+                                gcodeCommands += `G00 X2.5 Y2.5 Z-2.5\n`;
+                                
+                                socket.emit('write', options.port, gcodeCommands.trim());
+                                console.log('Sending G-code commands:', gcodeCommands.trim());
+                                
+                                // Delete the file here
+                                fs.unlink(filePath, (err) => {
+                                    if (err) {
+                                        console.error('Error deleting the file:', err);
+                                    } else {
+                                        console.log('Coordinates file deleted successfully.');
+                                    }
+                                    callback();
+                                    console.log("outside Callback")
+                                    socket.emit('write', options.port, 'moveToFile');
+                                });
+                            });
+                        }
+                    }).finally( () => {
+                        isCont = ifFile(filePath);
+                        // break;
+                    });
+                });
+            vorpal
+                .command('startup')
+                .description('Unlock system and adjust machine settings')
+                .delimiter(options.controllerType + '>')
+                .action(function(args, callback) {
+                    socket.emit('write', options.port, "g0 x5 y5 z-5");
+                    //socket.emit('write', options.port, "$h");
+
+                callback();
+            });
+
+      
 
         vorpal
             .command('loopPoints')
             .description('Move to points in sequential order until the spacebar is pressed')
             .action(function(args, callback) {
                 var points2 = [
-                    { x: 0, y: 0, z: 0 },
-                    { x: 30, y: 30, z: 0 },
-                    { x: 30, y: 30, z: 80 },
-                    { x: 30, y: 30, z: 0 },
-                    { x: 0, y: 30, z: 0 },
-                    { x: 0, y: 0, z: 0 },
+                    { x: 2.500, y: 2.500, z: -2.500 },
+                    { x: 30, y: 30, z: -2.500 },
+                    { x: 30, y: 30, z: -40 },
+                    { x: 30, y: 30, z: -2.500 },
+                    { x: 2.500, y: 30, z: -2.500 },
+                    { x: 2.500, y: 2.500, z: -2.500 },
                 ];
                 moveToPoints(points2).then(callback);
             });
@@ -230,6 +431,7 @@ serialport.list().then(function (ports) {
         choices: choices
     }]).then(function(answers) {
         options.port = answers.port;
+        console.log("HELLO?")
         createServer(options);
     });
 }).catch((err) => {
